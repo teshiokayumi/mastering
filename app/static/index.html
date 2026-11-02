@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>マスタリングツール</title>
+<style>
+:root {
+  --bg: #15171a;
+  --panel: #1e2125;
+  --panel-2: #272b30;
+  --line: #383d44;
+  --text: #eceef0;
+  --muted: #a3a9b1;
+  --accent: #e9a23b;
+  --accent-ink: #1a1408;
+  --before: #6b7480;
+  --ok: #7cc48d;
+  --warn: #f0c36a;
+  --error: #f08a7e;
+}
+* { box-sizing: border-box; }
+html { color-scheme: dark; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.6 "Yu Gothic UI", "Meiryo", "Segoe UI", system-ui, sans-serif;
+}
+.wrap { max-width: 880px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; margin: 0; }
+h2 { font-size: 15px; margin: 0; font-weight: 600; }
+.lead { color: var(--muted); margin: 2px 0 20px; font-size: 13px; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+.tab {
+  background: none; border: 0; border-bottom: 2px solid transparent;
+  padding: 8px 16px; cursor: pointer; color: var(--muted); margin-bottom: -1px;
+}
+.tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+
+.drop {
+  display: block; border: 2px dashed var(--line); border-radius: 8px;
+  padding: 32px 16px; text-align: center; cursor: pointer; background: var(--panel);
+  transition: border-color .12s, background .12s;
+}
+.drop:hover, .drop.over { border-color: var(--accent); background: var(--panel-2); }
+.drop:focus-within { border-color: var(--accent); }
+.drop strong { display: block; font-size: 16px; }
+.drop span { color: var(--muted); font-size: 13px; }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-top: 16px; }
+.file-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.file-row .name { font-weight: 600; overflow-wrap: anywhere; flex: 1 1 200px; }
+.meta { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.stages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.stage { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.stage-head { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; }
+.stage-head input { width: 17px; height: 17px; accent-color: var(--accent); }
+.stage-note { color: var(--muted); font-size: 12px; margin: 2px 0 8px 25px; }
+.stage.off .controls { opacity: .4; }
+.control { display: grid; grid-template-columns: 64px 1fr 76px; align-items: center; gap: 8px; font-size: 13px; margin-top: 6px; }
+.control input[type=range] { width: 100%; accent-color: var(--accent); min-width: 0; }
+.control output { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+.presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+.btn {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: 6px 12px; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block;
+}
+.btn:hover:not(:disabled) { border-color: var(--muted); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; font-size: 15px; padding: 9px 22px; }
+
+.action-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 16px; }
+.field { display: flex; align-items: center; gap: 8px; font-size: 13px; flex-wrap: wrap; }
+.field select, .field input[type=number] {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
+}
+.field input[type=number] { width: 84px; }
+.field input[type=radio] { accent-color: var(--accent); }
+
+.progress { margin-top: 12px; }
+.bar { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.msg { font-size: 13px; color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
+.notice { font-size: 13px; padding: 8px 12px; border-radius: 6px; margin-top: 12px; border: 1px solid; overflow-wrap: anywhere; }
+.notice.error { color: var(--error); border-color: var(--error); }
+.notice.warn { color: var(--warn); border-color: var(--warn); }
+
+.player-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+canvas { display: block; width: 100%; height: 120px; margin-top: 12px; background: var(--bg); border-radius: 6px; cursor: pointer; }
+.transport { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.segment { display: inline-flex; gap: 2px; }
+.time { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; cursor: pointer; }
+.check input { accent-color: var(--accent); }
+.legend { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 10px; }
+.legend i:first-child { margin-left: 0; }
+
+.table-wrap { overflow-x: auto; margin-top: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; }
+th:first-child, td:first-child { text-align: left; white-space: normal; overflow-wrap: anywhere; min-width: 140px; }
+td.actions { display: flex; gap: 6px; justify-content: flex-end; }
+tr.current td { background: var(--panel-2); }
+.after { color: var(--accent); font-weight: 600; }
+.download-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+.stale { color: var(--warn); font-size: 13px; }
+[hidden] { display: none !important; }
+
+@media (max-width: 640px) {
+  .stages { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>マスタリングツール</h1>
+  <p class="lead">音源はこのパソコンの中だけで処理します。元のファイルは変更されません。</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-master" aria-controls="view-master" aria-selected="true">マスタリング</button>
+    <button class="tab" role="tab" id="tab-align" aria-controls="view-align" aria-selected="false">音量揃え（最大6曲）</button>
+  </div>
+
+  <section id="view-master" role="tabpanel" aria-labelledby="tab-master">
+    <label class="drop" id="master-drop">
+      <strong>WAV / AIFF をここにドロップ</strong>
+      <span>またはクリックしてファイルを選択</span>
+      <input type="file" id="master-input" accept=".wav,.aif,.aiff">
+    </label>
+    <div class="notice error" id="master-error" role="alert" hidden></div>
+
+    <div class="panel" id="master-file" hidden>
+      <div class="file-row">
+        <div class="name" id="master-name"></div>
+        <div class="meta" id="master-meta"></div>
+      </div>
+    </div>
+
+    <div id="master-settings" hidden>
+      <div class="stages">
+        <div class="stage" data-stage="hpf">
+          <label class="stage-head"><input type="checkbox" id="hpf" checked>ハイパスフィルター</label>
+          <p class="stage-note">聴こえない超低域を取り除きます</p>
+          <div class="controls">
+            <label class="control">周波数<input type="range" id="hpf_freq" min="20" max="120" step="1" value="30"><output data-unit=" Hz"></output></label>
+          </div>
+        </div>
+        <div class="stage" data-stage="tone">
+          <label class="stage-head"><input type="checkbox" id="tone" checked>トーン整理</label>
+          <p class="stage-note">250 Hz のこもりを軽く除き、音色を整えます</p>
+          <div class="controls">
+            <label class="control">低域<input type="range" id="low_db" min="-6" max="6" step="0.5" value="0"><output data-unit=" dB" data-sign></output></label>
+            <label class="control">中域<input type="range" id="mid_db" min="-6" max="6" step="0.5" value="0"><output data-unit=" dB" data-sign></output></label>
+            <label class="control">高域<input type="range" id="high_db" min="-6" max="6" step="0.5" value="0"><output data-unit=" dB" data-sign></output></label>
+          </div>
+        </div>
+        <div class="stage" data-stage="glue">
+          <label class="stage-head"><input type="checkbox" id="glue" checked>グルー・コンプレッション</label>
+          <p class="stage-note">音のまとまりを出します。普通は 1〜3 dB が目安です</p>
+          <div class="controls">
+            <label class="control">かかり具合<input type="range" id="glue_db" min="0.5" max="6" step="0.5" value="2"><output data-unit=" dB"></output></label>
+          </div>
+        </div>
+        <div class="stage" data-stage="release">
+          <label class="stage-head"><input type="checkbox" id="release" checked>リリース用マスタリング</label>
+          <p class="stage-note">音圧を上げ、ピークを -1.0 dBTP に抑えます</p>
+          <div class="controls">
+            <label class="control">目標音圧<input type="range" id="target_lufs" min="-18" max="-8" step="0.5" value="-12"><output data-unit=" LUFS"></output></label>
+            <div class="presets">
+              <button type="button" class="btn" data-preset="-14">ナチュラル</button>
+              <button type="button" class="btn" data-preset="-12">標準</button>
+              <button type="button" class="btn" data-preset="-10">ラウド</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <button type="button" class="btn primary" id="master-run">処理する</button>
+        <label class="field">出力形式
+          <select id="master-format">
+            <option value="cd">CD（44.1 kHz / 16bit）</option>
+            <option value="hires">24bit（元のサンプルレート）</option>
+          </select>
+        </label>
+      </div>
+      <div class="progress" id="master-progress" hidden>
+        <div class="bar"><i></i></div>
+        <div class="msg" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="panel" id="master-result" hidden>
+      <div class="player-host"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>測定</th><th>処理前</th><th>処理後</th></tr></thead>
+          <tbody id="master-stats"></tbody>
+        </table>
+      </div>
+      <div id="master-warnings"></div>
+      <div class="download-row">
+        <a class="btn primary" id="master-download" download>ダウンロード</a>
+        <span class="meta" id="master-filename"></span>
+        <span class="stale" id="master-stale" hidden>設定が変更されています。反映するにはもう一度「処理する」を押してください。</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-align" role="tabpanel" aria-labelledby="tab-align" hidden>
+    <label class="drop" id="align-drop">
+      <strong>WAV / AIFF を最大6曲ドロップ</strong>
+      <span>またはクリックしてファイルを選択（EQやコンプはかけず、音量だけを揃えます）</span>
+      <input type="file" id="align-input" accept=".wav,.aif,.aiff" multiple>
+    </label>
+    <div class="notice error" id="align-error" role="alert" hidden></div>
+
+    <div class="panel" id="align-list" hidden>
+      <div class="player-head">
+        <h2>読み込んだ曲</h2>
+        <span class="meta" id="align-count"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>曲名</th><th>長さ</th><th>ラウドネス</th><th>True Peak</th><th></th></tr></thead>
+          <tbody id="align-rows"></tbody>
+        </table>
+      </div>
+      <div class="action-bar">
+        <div class="field" role="radiogroup" aria-label="揃える基準">
+          揃える基準
+          <label class="check"><input type="radio" name="align-mode" value="average" checked>全曲の平均</label>
+          <label class="check"><input type="radio" name="align-mode" value="fixed">指定</label>
+          <input type="number" id="align-target" min="-30" max="-6" step="0.5" value="-14" aria-label="指定する LUFS" disabled>
+          <span>LUFS</span>
+        </div>
+        <label class="field">出力形式
+          <select id="align-format">
+            <option value="cd">CD（44.1 kHz / 16bit）</option>
+            <option value="hires">24bit（元のサンプルレート）</option>
+          </select>
+        </label>
+      </div>
+      <div class="action-bar">
+        <button type="button" class="btn primary" id="align-run" disabled>音量を揃える</button>
+      </div>
+      <div class="progress" id="align-progress" hidden>
+        <div class="bar"><i></i></div>
+        <div class="msg" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="panel" id="align-result" hidden>
+      <div class="player-head">
+        <h2>結果</h2>
+        <span class="meta" id="align-target-label"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>曲名</th><th>処理前</th><th>処理後</th><th>True Peak</th><th>リミッター</th><th></th></tr></thead>
+          <tbody id="align-result-rows"></tbody>
+        </table>
+      </div>
+      <div id="align-warnings"></div>
+      <div class="player-host" style="margin-top:16px"></div>
+      <div class="download-row">
+        <a class="btn primary" id="align-zip" download hidden>すべてZIPでダウンロード</a>
+        <span class="stale" id="align-stale" hidden>曲や基準が変更されています。反映するにはもう一度処理してください。</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<template id="player-template">
+  <div class="player-head">
+    <h2 class="player-title"></h2>
+    <span class="time" aria-live="off"></span>
+  </div>
+  <canvas role="img" aria-label="波形。クリックするとその位置から再生します"></canvas>
+  <div class="legend"><i style="background:var(--before)"></i>処理前<i style="background:var(--accent)"></i>処理後</div>
+  <div class="transport">
+    <button type="button" class="btn play" disabled>再生</button>
+    <div class="segment" role="group" aria-label="試聴する音">
+      <button type="button" class="btn side" data-side="before" aria-pressed="false">処理前</button>
+      <button type="button" class="btn side" data-side="after" aria-pressed="true">処理後</button>
+    </div>
+    <label class="check"><input type="checkbox" class="match">音量を合わせて比較</label>
+    <span class="msg status"></span>
+  </div>
+</template>
+
+<script>
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const fmtDb = (value, unit) => `${value.toFixed(1)} ${unit}`;
+const fmtTime = seconds => {
+  const s = Math.max(0, seconds);
+  return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+};
+
+async function api(url, options) {
+  const response = await fetch(url, options);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(typeof data.detail === "string" ? data.detail : `処理できませんでした（エラー ${response.status}）`);
+  }
+  return data;
+}
+const postJson = (url, body) => api(url, {
+  method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+});
+const uploadFile = file => api(`/api/upload?name=${encodeURIComponent(file.name)}`, { method: "POST", body: file });
+
+async function runJob(url, body, progressEl) {
+  const { job_id } = await postJson(url, body);
+  progressEl.hidden = false;
+  try {
+    for (;;) {
+      const job = await api(`/api/jobs/${job_id}`);
+      $(".bar i", progressEl).style.width = `${Math.round(job.progress * 100)}%`;
+      $(".msg", progressEl).textContent = job.message;
+      if (job.state === "error") throw new Error(job.error);
+      if (job.state === "done") return job;
+      await sleep(300);
+    }
+  } finally {
+    progressEl.hidden = true;
+  }
+}
+
+function showError(el, message) {
+  el.textContent = message || "";
+  el.hidden = !message;
+}
+
+function showWarnings(host, warnings) {
+  host.replaceChildren(...warnings.map(text => {
+    const el = document.createElement("div");
+    el.className = "notice warn";
+    el.textContent = text;
+    return el;
+  }));
+}
+
+function setupDrop(zone, input, onFiles) {
+  input.addEventListener("change", () => {
+    onFiles([...input.files]);
+    input.value = "";
+  });
+  for (const type of ["dragenter", "dragover"]) {
+    zone.addEventListener(type, event => { event.preventDefault(); zone.classList.add("over"); });
+  }
+  zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+  zone.addEventListener("drop", event => {
+    event.preventDefault();
+    zone.classList.remove("over");
+    onFiles([...event.dataTransfer.files]);
+  });
+}
+// 枠の外に落としてもブラウザがファイルを開いてページを離れないようにする
+for (const type of ["dragover", "drop"]) window.addEventListener(type, event => event.preventDefault());
+
+/* 試聴プレーヤー。処理前後を同時に鳴らして音量だけを切り替えるので、再生位置がずれない。 */
+class Player {
+  constructor(host) {
+    host.replaceChildren($("#player-template").content.cloneNode(true));
+    this.canvas = $("canvas", host);
+    this.title = $(".player-title", host);
+    this.timeEl = $(".time", host);
+    this.playBtn = $(".play", host);
+    this.status = $(".status", host);
+    this.sideBtns = $$(".side", host);
+    this.matchBox = $(".match", host);
+    this.side = "after";
+    this.offset = 0;
+    this.playing = false;
+    this.buffers = null;
+    this.loadToken = 0;
+
+    this.playBtn.addEventListener("click", () => this.playing ? this.pause() : this.play());
+    this.sideBtns.forEach(btn => btn.addEventListener("click", () => this.setSide(btn.dataset.side)));
+    this.matchBox.addEventListener("change", () => this.applyGains());
+    this.canvas.addEventListener("click", event => {
+      if (!this.buffers) return;
+      const box = this.canvas.getBoundingClientRect();
+      this.seek((event.clientX - box.left) / box.width * this.duration);
+    });
+    new ResizeObserver(() => this.draw()).observe(this.canvas);
+  }
+
+  static context() {
+    Player.ctx ??= new AudioContext();
+    return Player.ctx;
+  }
+
+  async load(result) {
+    const token = ++this.loadToken;
+    this.stop();
+    this.offset = 0;
+    this.buffers = null;
+    this.result = result;
+    this.title.textContent = result.filename;
+    this.playBtn.disabled = true;
+    this.status.textContent = "試聴データを準備しています…";
+    this.draw();
+    this.updateTime();
+    try {
+      const ctx = Player.context();
+      const decode = async url => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error();
+        return ctx.decodeAudioData(await response.arrayBuffer());
+      };
+      const [before, after] = await Promise.all([decode(result.source_url), decode(result.url)]);
+      if (token !== this.loadToken) return;
+      this.buffers = { before, after };
+      this.duration = Math.max(before.duration, after.duration);
+      this.playBtn.disabled = false;
+      this.status.textContent = "";
+      this.updateTime();
+    } catch {
+      if (token === this.loadToken) this.status.textContent = "試聴データを読み込めませんでした。";
+    }
+  }
+
+  play() {
+    if (!this.buffers) return;
+    const ctx = Player.context();
+    ctx.resume();
+    if (this.offset >= this.duration - 0.05) this.offset = 0;
+    this.nodes = {};
+    const when = ctx.currentTime + 0.05;
+    for (const side of ["before", "after"]) {
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      source.buffer = this.buffers[side];
+      source.connect(gain).connect(ctx.destination);
+      if (this.offset < source.buffer.duration) source.start(when, this.offset);
+      this.nodes[side] = { source, gain };
+    }
+    this.startedAt = when - this.offset;
+    this.playing = true;
+    this.applyGains(true);
+    this.playBtn.textContent = "一時停止";
+    this.tick();
+  }
+
+  position() {
+    if (!this.playing) return this.offset;
+    return Math.min(this.duration, Math.max(0, Player.context().currentTime - this.startedAt));
+  }
+
+  stop() {
+    if (this.nodes) {
+      for (const { source } of Object.values(this.nodes)) {
+        try { source.stop(); } catch { /* 未開始のときは何もしない */ }
+        source.disconnect();
+      }
+    }
+    this.nodes = null;
+    this.playing = false;
+    this.playBtn.textContent = "再生";
+    cancelAnimationFrame(this.raf);
+  }
+
+  pause() {
+    this.offset = this.position();
+    this.stop();
+    this.draw();
+    this.updateTime();
+  }
+
+  seek(position) {
+    const wasPlaying = this.playing;
+    this.stop();
+    this.offset = Math.max(0, Math.min(this.duration, position));
+    if (wasPlaying) this.play();
+    this.draw();
+    this.updateTime();
+  }
+
+  setSide(side) {
+    this.side = side;
+    this.sideBtns.forEach(btn => btn.setAttribute("aria-pressed", String(btn.dataset.side === side)));
+    this.applyGains();
+    this.draw();
+  }
+
+  // 音量合わせは大きいほうを下げるだけにして、増幅による音割れを避ける
+  levels() {
+    if (!this.matchBox.checked || !this.result) return { before: 1, after: 1 };
+    const difference = this.result.output.lufs - this.result.source.lufs;
+    return {
+      before: difference < 0 ? 10 ** (difference / 20) : 1,
+      after: difference > 0 ? 10 ** (-difference / 20) : 1,
+    };
+  }
+
+  applyGains(immediate = false) {
+    if (!this.nodes) return;
+    const ctx = Player.context();
+    const levels = this.levels();
+    for (const side of ["before", "after"]) {
+      const value = side === this.side ? levels[side] : 0;
+      const param = this.nodes[side].gain.gain;
+      if (immediate) {
+        param.value = value;
+      } else {
+        // クリックノイズを避けるため短くフェードする
+        param.cancelScheduledValues(ctx.currentTime);
+        param.setValueAtTime(param.value, ctx.currentTime);
+        param.linearRampToValueAtTime(value, ctx.currentTime + 0.015);
+      }
+    }
+  }
+
+  tick() {
+    if (!this.playing) return;
+    if (this.position() >= this.duration) {
+      this.offset = this.duration;
+      this.stop();
+    }
+    this.draw();
+    this.updateTime();
+    if (this.playing) this.raf = requestAnimationFrame(() => this.tick());
+  }
+
+  updateTime() {
+    this.timeEl.textContent = this.buffers ? `${fmtTime(this.position())} / ${fmtTime(this.duration)}` : "";
+  }
+
+  draw() {
+    const canvas = this.canvas;
+    const box = canvas.getBoundingClientRect();
+    if (!box.width) return;
+    const ratio = window.devicePixelRatio || 1;
+    const width = Math.round(box.width * ratio);
+    const height = Math.round(box.height * ratio);
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    const g = canvas.getContext("2d");
+    g.clearRect(0, 0, width, height);
+    if (!this.result) return;
+    const css = getComputedStyle(document.documentElement);
+    const color = name => css.getPropertyValue(name).trim();
+    const paint = (peaks, fill, alpha) => {
+      g.fillStyle = fill;
+      g.globalAlpha = alpha;
+      const middle = height / 2;
+      for (let x = 0; x < width; x++) {
+        const value = peaks[Math.floor(x / width * peaks.length)] || 0;
+        const h = Math.max(1, Math.min(1, value) * (middle - 2));
+        g.fillRect(x, middle - h, 1, h * 2);
+      }
+    };
+    // 選んでいる音を手前に描く
+    if (this.side === "after") {
+      paint(this.result.wave_after, color("--accent"), 1);
+      paint(this.result.wave_before, color("--before"), 1);
+    } else {
+      paint(this.result.wave_after, color("--accent"), 0.35);
+      paint(this.result.wave_before, color("--text"), 0.9);
+    }
+    g.globalAlpha = 1;
+    if (this.buffers) {
+      g.fillStyle = color("--text");
+      g.fillRect(Math.round(this.position() / this.duration * width), 0, Math.ceil(ratio), height);
+    }
+  }
+}
+
+/* ------------------------------------------------ タブ */
+const tabs = [["tab-master", "view-master"], ["tab-align", "view-align"]];
+tabs.forEach(([tabId, viewId]) => {
+  $(`#${tabId}`).addEventListener("click", () => {
+    tabs.forEach(([otherTab, otherView]) => {
+      $(`#${otherTab}`).setAttribute("aria-selected", String(otherTab === tabId));
+      $(`#${otherView}`).hidden = otherView !== viewId;
+    });
+    players.master.pause();
+    players.align.pause();
+    players.master.draw();
+    players.align.draw();
+  });
+});
+
+const players = {
+  master: new Player($("#master-result .player-host")),
+  align: new Player($("#align-result .player-host")),
+};
+
+/* ------------------------------------------------ マスタリング */
+const master = { track: null, busy: false };
+
+function syncControl(input) {
+  const out = input.parentElement.querySelector("output");
+  if (!out) return;
+  const value = Number(input.value);
+  out.textContent = `${"sign" in out.dataset && value > 0 ? "+" : ""}${value}${out.dataset.unit}`;
+}
+
+function markMasterStale() {
+  if (!$("#master-result").hidden) $("#master-stale").hidden = false;
+}
+
+function syncStage(stage) {
+  const enabled = $(".stage-head input", stage).checked;
+  stage.classList.toggle("off", !enabled);
+  $$(".controls input, .controls button", stage).forEach(control => { control.disabled = !enabled; });
+}
+
+$$(".stage").forEach(stage => {
+  $(".stage-head input", stage).addEventListener("change", () => { syncStage(stage); markMasterStale(); });
+  syncStage(stage);
+});
+$$(".control input").forEach(input => {
+  syncControl(input);
+  input.addEventListener("input", () => { syncControl(input); markMasterStale(); });
+});
+$$("[data-preset]").forEach(button => button.addEventListener("click", () => {
+  const input = $("#target_lufs");
+  input.value = button.dataset.preset;
+  syncControl(input);
+  markMasterStale();
+}));
+$("#master-format").addEventListener("change", markMasterStale);
+
+setupDrop($("#master-drop"), $("#master-input"), async files => {
+  showError($("#master-error"), "");
+  if (master.busy) return;
+  if (files.length !== 1) {
+    showError($("#master-error"), "マスタリングは1曲ずつ行います。複数の曲は「音量揃え」タブをお使いください。");
+    return;
+  }
+  master.busy = true;
+  $("#master-run").disabled = true;
+  $("#master-drop strong").textContent = "読み込んで解析しています…";
+  try {
+    const track = await uploadFile(files[0]);
+    if (master.track) api(`/api/tracks/${master.track.id}`, { method: "DELETE" }).catch(() => {});
+    players.master.stop();
+    master.track = track;
+    $("#master-name").textContent = track.name;
+    $("#master-meta").textContent =
+      `${fmtTime(track.duration)} ・ ${(track.rate / 1000).toFixed(1)} kHz ・ ${track.channels === 1 ? "モノラル" : "ステレオ"} ・ ${fmtDb(track.lufs, "LUFS")} ・ ${fmtDb(track.tp, "dBTP")}`;
+    $("#master-file").hidden = false;
+    $("#master-settings").hidden = false;
+    $("#master-result").hidden = true;
+  } catch (error) {
+    showError($("#master-error"), error.message);
+  } finally {
+    master.busy = false;
+    $("#master-run").disabled = false;
+    $("#master-drop strong").textContent = "WAV / AIFF をここにドロップ";
+  }
+});
+
+function statRow(label, before, after) {
+  const row = document.createElement("tr");
+  for (const [text, className] of [[label], [before], [after, "after"]]) {
+    const cell = document.createElement("td");
+    cell.textContent = text;
+    if (className) cell.className = className;
+    row.append(cell);
+  }
+  return row;
+}
+
+$("#master-run").addEventListener("click", async () => {
+  if (master.busy || !master.track) return;
+  master.busy = true;
+  $("#master-run").disabled = true;
+  showError($("#master-error"), "");
+  players.master.stop();
+  const body = { track_id: master.track.id, format: $("#master-format").value };
+  for (const key of ["hpf", "tone", "glue", "release"]) body[key] = $(`#${key}`).checked;
+  for (const key of ["hpf_freq", "low_db", "mid_db", "high_db", "glue_db", "target_lufs"]) body[key] = Number($(`#${key}`).value);
+  try {
+    const job = await runJob("/api/master", body, $("#master-progress"));
+    const result = job.results[0];
+    $("#master-stats").replaceChildren(
+      statRow("ラウドネス", fmtDb(result.source.lufs, "LUFS"), fmtDb(result.output.lufs, "LUFS")),
+      statRow("True Peak", fmtDb(result.source.tp, "dBTP"), fmtDb(result.output.tp, "dBTP")),
+      statRow("コンプのかかり（平均）", "—", body.glue ? fmtDb(result.glue_db, "dB") : "オフ"),
+      statRow("リミッターのかかり（最大）", "—", body.release ? fmtDb(result.reduction_db, "dB") : "オフ"),
+      statRow("形式", `${(master.track.rate / 1000).toFixed(1)} kHz / ${master.track.subtype}`,
+        `${(result.output.rate / 1000).toFixed(1)} kHz / ${result.output.bits}bit`),
+    );
+    showWarnings($("#master-warnings"), result.warnings);
+    $("#master-download").href = result.download_url;
+    $("#master-filename").textContent = result.filename;
+    $("#master-stale").hidden = true;
+    $("#master-result").hidden = false;
+    players.master.load(result);
+  } catch (error) {
+    showError($("#master-error"), error.message);
+  } finally {
+    master.busy = false;
+    $("#master-run").disabled = false;
+  }
+});
+
+/* ------------------------------------------------ 音量揃え */
+const align = { tracks: [], busy: false };
+const MAX_TRACKS = 6;
+
+function cell(text) {
+  const td = document.createElement("td");
+  td.textContent = text;
+  return td;
+}
+
+function markAlignStale() {
+  if (!$("#align-result").hidden) $("#align-stale").hidden = false;
+}
+
+function renderAlignList() {
+  $("#align-list").hidden = align.tracks.length === 0;
+  $("#align-count").textContent = `${align.tracks.length} / ${MAX_TRACKS} 曲`;
+  $("#align-run").disabled = align.busy || align.tracks.length < 2;
+  $("#align-rows").replaceChildren(...align.tracks.map(track => {
+    const row = document.createElement("tr");
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "btn";
+    remove.textContent = "外す";
+    remove.setAttribute("aria-label", `${track.name} を外す`);
+    remove.disabled = align.busy;
+    remove.addEventListener("click", () => {
+      align.tracks = align.tracks.filter(item => item !== track);
+      api(`/api/tracks/${track.id}`, { method: "DELETE" }).catch(() => {});
+      markAlignStale();
+      renderAlignList();
+    });
+    const actions = document.createElement("td");
+    actions.append(remove);
+    row.append(cell(track.name), cell(fmtTime(track.duration)), cell(fmtDb(track.lufs, "LUFS")), cell(fmtDb(track.tp, "dBTP")), actions);
+    return row;
+  }));
+}
+
+setupDrop($("#align-drop"), $("#align-input"), async files => {
+  showError($("#align-error"), "");
+  if (align.busy || files.length === 0) return;
+  if (align.tracks.length + files.length > MAX_TRACKS) {
+    showError($("#align-error"), `同時に処理できるのは${MAX_TRACKS}曲までです。いま ${align.tracks.length} 曲読み込まれています。`);
+    return;
+  }
+  align.busy = true;
+  renderAlignList();
+  const failures = [];
+  for (const [index, file] of files.entries()) {
+    $("#align-drop strong").textContent = `読み込んで解析しています… ${index + 1} / ${files.length}`;
+    try {
+      align.tracks.push(await uploadFile(file));
+      markAlignStale();
+    } catch (error) {
+      failures.push(`${file.name}: ${error.message}`);
+    }
+  }
+  align.busy = false;
+  $("#align-drop strong").textContent = "WAV / AIFF を最大6曲ドロップ";
+  showError($("#align-error"), failures.join("\n"));
+  renderAlignList();
+});
+
+$$("input[name=align-mode]").forEach(radio => radio.addEventListener("change", () => {
+  $("#align-target").disabled = $("input[name=align-mode]:checked").value !== "fixed";
+  markAlignStale();
+}));
+$("#align-target").addEventListener("input", markAlignStale);
+$("#align-format").addEventListener("change", markAlignStale);
+
+function renderAlignResults(job) {
+  const results = job.results;
+  $("#align-target-label").textContent = `基準 ${fmtDb(job.target_lufs, "LUFS")}`;
+  const select = (result, row) => {
+    $$("#align-result-rows tr").forEach(other => other.classList.toggle("current", other === row));
+    players.align.load(result);
+  };
+  $("#align-result-rows").replaceChildren(...results.map((result, index) => {
+    const row = document.createElement("tr");
+    const after = cell(fmtDb(result.output.lufs, "LUFS"));
+    after.className = "after";
+    const actions = document.createElement("td");
+    actions.className = "actions";
+    const listen = document.createElement("button");
+    listen.type = "button";
+    listen.className = "btn";
+    listen.textContent = "試聴";
+    listen.setAttribute("aria-label", `${result.name} を試聴`);
+    listen.addEventListener("click", () => select(result, row));
+    const save = document.createElement("a");
+    save.className = "btn";
+    save.textContent = "保存";
+    save.href = result.download_url;
+    save.download = result.filename;
+    save.setAttribute("aria-label", `${result.filename} をダウンロード`);
+    actions.append(listen, save);
+    row.append(
+      cell(result.filename), cell(fmtDb(result.source.lufs, "LUFS")), after,
+      cell(fmtDb(result.output.tp, "dBTP")), cell(fmtDb(result.reduction_db, "dB")), actions,
+    );
+    if (index === 0) queueMicrotask(() => select(result, row));
+    return row;
+  }));
+  showWarnings($("#align-warnings"), results.flatMap(result => result.warnings.map(text => `${result.filename}: ${text}`)));
+  const zip = $("#align-zip");
+  zip.hidden = !job.zip_url;
+  if (job.zip_url) zip.href = job.zip_url;
+  $("#align-stale").hidden = true;
+  $("#align-result").hidden = false;
+}
+
+$("#align-run").addEventListener("click", async () => {
+  if (align.busy || align.tracks.length < 2) return;
+  const mode = $("input[name=align-mode]:checked").value;
+  const target = Number($("#align-target").value);
+  if (mode === "fixed" && !(target >= -30 && target <= -6)) {
+    showError($("#align-error"), "指定する LUFS は -30 から -6 の間で入力してください。");
+    return;
+  }
+  align.busy = true;
+  showError($("#align-error"), "");
+  players.align.stop();
+  renderAlignList();
+  try {
+    const job = await runJob("/api/align", {
+      track_ids: align.tracks.map(track => track.id),
+      mode,
+      target_lufs: mode === "fixed" ? target : -14,
+      format: $("#align-format").value,
+    }, $("#align-progress"));
+    renderAlignResults(job);
+  } catch (error) {
+    showError($("#align-error"), error.message);
+  } finally {
+    align.busy = false;
+    renderAlignList();
+  }
+});
+</script>
+</body>
+</html>
