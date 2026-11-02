@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mastering-tool",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-X", "utf8", "app/server.py", "--no-browser"],
+      "port": 8765
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(foreach \\($c in 'python','py','node','npm','ffmpeg'\\) { $p = Get-Command $c -ErrorAction SilentlyContinue; if \\($p\\) { \"$c : $\\($p.Source\\) : $\\(& $c --version 2>&1 | Select-Object -First 1\\)\" } else { \"$c : not found\" } }; python -m pip list 2>$null | Select-String -Pattern '^\\(numpy|scipy|soundfile|pyloudnorm|flask|fastapi|uvicorn|pedalboard|gradio|librosa\\) ')"
+    ]
+  }
+}
